@@ -9,4 +9,10 @@ declare global {
 	}
 }
 
+/// <reference types="lucia-auth" />
+declare namespace Lucia {
+	type Auth = import("./lucia.ts").Auth;
+	type UserAttributes = {};
+}
+
 export {};

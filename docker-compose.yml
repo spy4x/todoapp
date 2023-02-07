@@ -1,0 +1,26 @@
+version: '3.9'
+
+volumes:
+  postgres-data: null
+  redis-data: null
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    restart: always
+    ports:
+      - 5432:5432
+    environment:
+      - POSTGRES_USER=todoapp
+      - POSTGRES_PASSWORD=localPassword
+      - POSTGRES_DB=todoapp
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+
+  redis:
+    image: redis:alpine
+    restart: always
+    ports:
+      - 6379:6379
+    volumes:
+      - redis-data:/data
