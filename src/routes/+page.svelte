@@ -1,23 +1,46 @@
 <script lang="ts">
-  import "../app.css";
-  import type { PageData } from "./$types";
-  import { enhance } from "$app/forms";
+  import '../app.css';
+  import { auth } from '../lib/client/auth';
 
-  export let data: PageData;
-  export let form;
+  let username = '';
+  let password = '';
 </script>
 
-<form method="POST" action="?/signIn" use:enhance class="flex flex-col gap-3 max-w-xs">
-  <input type="username" name="username" placeholder="Username" class="input input-bordered w-full max-w-xs" />
-  <input type="password" name="password" placeholder="Password" class="input input-bordered w-full max-w-xs" />
-  <div class="flex gap-3 justify-end">
-    <button type="submit" class="btn">Sign in</button>
-    <button formaction="?/signUp" class="btn btn-primary">Sign up</button>
-  </div>
-  {#if data?.userId}
-    <button formaction="?/signOut" class="btn">Sign out</button>
-  {/if}
-  {#if form?.error}
-    <div class="text-red-500">{form.error.message}</div>
-  {/if}
-</form>
+{#if $auth.userId}
+  <button type="button" class="btn" on:click={() => auth.signOut()}
+    >Sign out</button
+  >
+{:else}
+  <form class="flex max-w-xs flex-col gap-3">
+    <input
+      name="username"
+      bind:value={username}
+      placeholder="Username"
+      class="input-bordered input w-full max-w-xs"
+    />
+    <input
+      type="password"
+      name="password"
+      bind:value={password}
+      placeholder="Password"
+      class="input-bordered input w-full max-w-xs"
+    />
+    <div class="flex justify-end gap-3">
+      <button
+        type="button"
+        class="btn"
+        on:click={() => auth.signIn(username, password)}>Sign in</button
+      >
+      <button
+        type="button"
+        class="btn-primary btn"
+        on:click={() => auth.signUp(username, password)}>Sign up</button
+      >
+    </div>
+    <!--{#if form?.error}-->
+    <!--  <div class="text-red-500">{form.error.message}</div>-->
+    <!--{/if}-->
+  </form>
+{/if}
+
+{JSON.stringify($auth)}
