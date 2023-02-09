@@ -1,172 +1,68 @@
-import WebSocket, { WebSocketServer } from 'ws';
-import { auth } from './lucia';
+import { WebSocketServer } from 'ws';
+import { getEnv } from './config';
+import { routesAuth } from './routes/auth';
+import type { Context } from './helpers';
+import { allClients, authenticatedClients, broadcastToAll } from './helpers';
+import { routesTodos } from './routes/todos';
+import { init } from '@paralleldrive/cuid2';
+import { prisma } from './prisma';
 
-function subscribeToStream(client: WebSocket.WebSocket) {
-  let index = 0;
-  const interval = setInterval(() => {
-    if (index >= 5) {
-      clearInterval(interval);
-      return;
-    }
-    client.send(JSON.stringify({ index: ++index }));
-  }, 1000);
-}
+const cuid = init({ length: 5 });
 
 function startWSServer() {
-  const port = 8080;
+  const port = +getEnv('PORT');
   const server = new WebSocketServer({ port });
 
   server.on('listening', () => {
     console.log(`WebSocketServer listening on port ${port}`);
+
+    let todoIndex = 0;
+    setInterval(async () => {
+      console.log('allClients', allClients.size);
+      console.log('authenticatedClients', authenticatedClients.size);
+      const todo = await prisma.todo.create({
+        data: {
+          title: `Todo ${++todoIndex}`,
+        },
+      });
+      broadcastToAll({ t: 'todos/created', data: todo });
+    }, 10000);
   });
 
-  server.on('connection', client => {
-    let userId: string | undefined = undefined;
+  server.on('connection', socket => {
+    const context: Context = {
+      id: cuid(),
+      socket,
+      request: { t: '' }, // TODO: move to outer object to avoid race conditions
+      response: null, // TODO: move to outer object to avoid race conditions
+      userId: '',
+      sessionId: '',
+    };
+    allClients.set(context.id, context);
 
-    function getUserId(): string {
-      if (!userId) {
-        throw new Error('Not signed in');
+    socket.on('error', console.error);
+
+    socket.on('close', () => {
+      allClients.delete(context.id);
+      if (context.userId) {
+        authenticatedClients.delete(context.userId);
       }
-      return userId;
-    }
-
-    let sessionId: string | undefined = undefined;
-
-    function getSessionId(): string {
-      if (!sessionId) {
-        throw new Error('Not signed in');
-      }
-      return sessionId;
-    }
-
-    client.on('error', error => console.error('WebSocketServer Error:', error));
-
-    client.on('close', async () => {
-      userId = undefined;
-      sessionId = undefined;
     });
 
-    client.on('message', async (data: string) => {
-      console.log('received: %s', data);
-      let json: any;
+    socket.on('message', async (data: string) => {
+      console.log('Received: %s', data);
+      let json: any; // TODO: Type this
       try {
         json = JSON.parse(data);
-      } catch (e) {
-        console.log('Warning: Not json', data);
-        client.send(JSON.stringify({ error: 'Not json' }));
+      } catch {
+        console.log('Warning: Not json %s', data);
+        socket.send(JSON.stringify({ m: 'v/json' }));
         return;
       }
-      switch (json.type) {
-        case 'ping': {
-          client.send(JSON.stringify({ type: 'pong', userId, sessionId }));
-          return;
-        }
-        case 'subscribe': {
-          subscribeToStream(client);
-          return;
-        }
-        case 'signUp': {
-          try {
-            const { username, password } = json;
-            ({ userId } = await auth.createUser({
-              key: {
-                providerId: 'username',
-                providerUserId: username,
-                password,
-              },
-              attributes: {},
-            }));
-            const session = await auth.createSession(getUserId());
-            sessionId = session.sessionId;
-            return client.send(
-              JSON.stringify({
-                type: 'signUpSuccess',
-                userId,
-                sessionId: session.sessionId,
-              }),
-            );
-          } catch (error) {
-            console.log(error);
-            return client.send(
-              JSON.stringify({
-                type: 'signUpFail',
-                message: 'Something went wrong',
-              }),
-            );
-          }
-        }
-
-        case 'signIn': {
-          const { username, password } = json;
-          try {
-            ({ userId } = await auth.validateKeyPassword(
-              'username',
-              username,
-              password,
-            ));
-            const session = await auth.createSession(getUserId());
-            sessionId = session.sessionId;
-            return client.send(
-              JSON.stringify({
-                type: 'signInSuccess',
-                userId,
-                sessionId: session.sessionId,
-              }),
-            );
-          } catch (error) {
-            console.log(error);
-            return client.send(
-              JSON.stringify({
-                type: 'signInFail',
-                message: 'There are no such username and password combination',
-              }),
-            );
-          }
-        }
-
-        case 'resignIn': {
-          const { sessionId: clientSessionId } = json;
-          try {
-            const session = await auth.validateSession(clientSessionId);
-            userId = session.userId;
-            sessionId = session.sessionId;
-            return client.send(
-              JSON.stringify({
-                type: 'resignInSuccess',
-                userId,
-                sessionId: session.sessionId,
-              }),
-            );
-          } catch (error) {
-            console.log('resignin failed:', error);
-            return client.send(
-              JSON.stringify({
-                type: 'resignInFail',
-                message: 'Something went wrong',
-              }),
-            );
-          }
-        }
-
-        case 'signOut': {
-          try {
-            await auth.invalidateSession(getSessionId());
-            return client.send(
-              JSON.stringify({
-                type: 'signOutSuccess',
-              }),
-            );
-          } catch (error) {
-            console.log(error);
-            return client.send(
-              JSON.stringify({
-                type: 'signOutFail',
-                message: 'Something went wrong',
-              }),
-            );
-          }
-        }
-      }
+      context.request = json;
+      context.response = null;
+      void routesAuth(context);
+      void routesTodos(context);
     });
   });
 

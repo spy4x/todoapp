@@ -1,13 +1,14 @@
 import { writable } from 'svelte/store';
 import { getSocket } from './ws';
+import { send } from './helpers';
 
-export interface Auth {
+export interface AuthState {
   userId: string | undefined;
   sessionId: string | undefined;
   errorMessage: string | undefined;
 }
 
-const initialState: Auth = {
+const initialState: AuthState = {
   userId: undefined,
   sessionId: undefined,
   errorMessage: undefined,
@@ -15,24 +16,24 @@ const initialState: Auth = {
 
 const socket = getSocket();
 
-const store = writable<Auth>(initialState);
+const store = writable<AuthState>(initialState);
 
 const localStorageKey = 'auth';
 
-function setState(state: Auth) {
+function setState(state: AuthState) {
   localStorage.setItem(localStorageKey, JSON.stringify(state));
   store.set(state);
 }
 
 socket.addEventListener('message', event => {
   const data = JSON.parse(event.data);
-  switch (data.type) {
+  switch (data.t) {
     case 'signInSuccess':
-    case 'resignInSuccess':
+    case 'reSignInSuccess':
     case 'signUpSuccess': {
       return setState({
-        userId: data.userId,
-        sessionId: data.sessionId,
+        userId: data.u,
+        sessionId: data.s,
         errorMessage: undefined,
       });
     }
@@ -40,7 +41,7 @@ socket.addEventListener('message', event => {
       return setState(initialState);
     }
     case 'signInFail':
-    case 'resignInFail':
+    case 'reSignInFail':
     case 'signUpFail':
     case 'signOutFail': {
       return setState({
@@ -55,44 +56,23 @@ socket.addEventListener('message', event => {
 export const auth = {
   subscribe: store.subscribe,
   signIn: (username: string, password: string) => {
-    socket.send(
-      JSON.stringify({
-        type: 'signIn',
-        username,
-        password,
-      }),
-    );
+    send(socket, { t: 'signIn', username, password });
   },
   resignIn: (sessionId: string) => {
-    socket.send(
-      JSON.stringify({
-        type: 'resignIn',
-        sessionId,
-      }),
-    );
+    send(socket, { t: 'reSignIn', sessionId });
   },
   signUp: (username: string, password: string) => {
-    socket.send(
-      JSON.stringify({
-        type: 'signUp',
-        username,
-        password,
-      }),
-    );
+    send(socket, { t: 'signUp', username, password });
   },
   signOut: () => {
-    socket.send(
-      JSON.stringify({
-        type: 'signOut',
-      }),
-    );
+    send(socket, { t: 'signOut' });
   },
 };
 
 // read store values from localStorage
 const stored = localStorage.getItem(localStorageKey);
 if (stored) {
-  const value: Auth = JSON.parse(stored);
+  const value: AuthState = JSON.parse(stored);
   store.set(value);
   socket.addEventListener('open', () => {
     if (value.userId && value.sessionId) {
