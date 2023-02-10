@@ -15,6 +15,10 @@ model User {
   session Session[]
   Key     Key[]
 
+  username String  @unique @db.VarChar(50)
+  photoURL String? @db.VarChar(400)
+  isOnline Boolean @default(false) @map("is_online")
+
   @@map("user")
 }
 

@@ -1,20 +1,39 @@
-import type { Context } from '../../helpers';
+import { authMiddleware, type Context } from '../../helpers';
+import { todosList, todosListCommand, type TodosListRequest } from './list';
 import {
   todosCreate,
   todosCreateCommand,
   type TodosCreateRequest,
-  type TodosCreateResponse,
 } from './create';
+import {
+  todosUpdate,
+  todosUpdateCommand,
+  type TodosUpdateRequest,
+} from './update';
+import {
+  todosDelete,
+  todosDeleteCommand,
+  type TodosDeleteRequest,
+} from './delete';
 
-export type TodosRequest = TodosCreateRequest;
+export type TodosRequest =
+  | TodosListRequest
+  | TodosCreateRequest
+  | TodosUpdateRequest
+  | TodosDeleteRequest;
 
-export type TodosResponse = TodosCreateResponse;
-
-export async function routesTodos(
-  context: Context<TodosRequest, TodosResponse>,
-): Promise<void> {
-  switch (context.request.t) {
+export function routesTodos(
+  context: Context,
+  request: TodosRequest,
+): void | Promise<void> {
+  switch (request.t) {
+    case todosListCommand:
+      return todosList(context);
     case todosCreateCommand:
-      return todosCreate(context);
+      return authMiddleware(context, context => todosCreate(context, request));
+    case todosUpdateCommand:
+      return authMiddleware(context, context => todosUpdate(context, request));
+    case todosDeleteCommand:
+      return authMiddleware(context, context => todosDelete(context, request));
   }
 }

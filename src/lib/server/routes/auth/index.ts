@@ -1,28 +1,8 @@
 import type { Context } from '../../helpers';
-import {
-  signUp,
-  signUpCommand,
-  type SignUpRequest,
-  type SignUpResponse,
-} from './signUp';
-import {
-  signIn,
-  signInCommand,
-  type SignInRequest,
-  type SignInResponse,
-} from './signIn';
-import {
-  reSignIn,
-  reSignInCommand,
-  type ReSignInRequest,
-  type ReSignInResponse,
-} from './reSignIn';
-import {
-  signOut,
-  signOutCommand,
-  type SignOutRequest,
-  type SignOutResponse,
-} from './signOut';
+import { signUp, signUpCommand, type SignUpRequest } from './signUp';
+import { signIn, signInCommand, type SignInRequest } from './signIn';
+import { reSignIn, reSignInCommand, type ReSignInRequest } from './reSignIn';
+import { signOut, signOutCommand, type SignOutRequest } from './signOut';
 
 export type AuthRequest =
   | SignUpRequest
@@ -30,22 +10,17 @@ export type AuthRequest =
   | ReSignInRequest
   | SignOutRequest;
 
-export type AuthResponse =
-  | SignUpResponse
-  | SignInResponse
-  | ReSignInResponse
-  | SignOutResponse;
-
 export async function routesAuth(
-  context: Context<AuthRequest, AuthResponse>,
+  context: Context,
+  request: AuthRequest,
 ): Promise<void> {
-  switch (context.request.t) {
+  switch (request.t) {
     case signUpCommand:
-      return signUp(context);
+      return signUp(context, request);
     case signInCommand:
-      return signIn(context);
+      return signIn(context, request);
     case reSignInCommand:
-      return reSignIn(context);
+      return reSignIn(context, request);
     case signOutCommand:
       return signOut(context);
   }

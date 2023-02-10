@@ -1,8 +1,10 @@
 import { auth } from '../../lucia';
 import type { BaseRequest, Context } from '../../helpers';
-import { send } from '../../helpers';
+import { sendToContext, setUserOnline } from '../../helpers';
+import { prisma } from '../../prisma';
+import type { User } from '@prisma/client';
 
-export const signInCommand = 'signIn';
+export const signInCommand = 'auth/signIn';
 
 export interface SignInRequest extends BaseRequest {
   t: typeof signInCommand;
@@ -11,31 +13,42 @@ export interface SignInRequest extends BaseRequest {
 }
 
 export type SignInResponse =
-  | { t: 'signInSuccess'; u: string; s: string }
-  | { t: 'signInFail' };
+  | { t: 'auth/signInSuccess'; data: { sessionId: string; user: User } }
+  | { t: 'auth/signInFail' };
 
 export async function signIn(
-  context: Context<SignInRequest, SignInResponse>,
+  context: Context,
+  request: SignInRequest,
 ): Promise<void> {
   try {
-    const { username, password } = context.request;
+    const { username, password } = request;
     const { userId } = await auth.validateKeyPassword(
       'username',
       username,
       password,
     );
     const { sessionId } = await auth.createSession(userId);
+    const user = await prisma.user.update({
+      where: { id: userId },
+      data: { isOnline: true },
+    });
+    if (!user) {
+      throw new Error('User not found');
+    }
     context.userId = userId;
     context.sessionId = sessionId;
-    context.response = {
-      t: 'signInSuccess',
-      u: context.userId,
-      s: context.sessionId,
+    const response: SignInResponse = {
+      t: 'auth/signInSuccess',
+      data: {
+        sessionId: context.sessionId,
+        user,
+      },
     };
-    return send(context);
+    sendToContext(context, response);
+    void setUserOnline(context, user);
   } catch (error) {
     console.log('signIn', error);
-    context.response = { t: 'signInFail' };
-    return send(context);
+    const response: SignInResponse = { t: 'auth/signInFail' };
+    return sendToContext(context, response);
   }
 }

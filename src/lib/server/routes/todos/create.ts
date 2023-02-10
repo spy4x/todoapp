@@ -1,9 +1,9 @@
 import type { BaseRequest, Context } from '../../helpers';
-import { send } from '../../helpers';
+import { broadcastToAll, sendToContext } from '../../helpers';
 import type { Todo } from '@prisma/client';
 import { prisma } from '../../prisma';
 
-export const todosCreateCommand = 'todosCreate';
+export const todosCreateCommand = 'todos/create';
 
 export interface TodosCreateRequest extends BaseRequest {
   t: typeof todosCreateCommand;
@@ -14,17 +14,24 @@ export type TodosCreateResponse =
   | { t: 'todosCreateSuccess'; data: Todo }
   | { t: 'todosCreateFail' };
 
-export async function todosCreate(
-  context: Context<TodosCreateRequest, TodosCreateResponse>,
+async function todosCreate(
+  context: Context,
+  request: TodosCreateRequest,
 ): Promise<void> {
   try {
-    const { data } = context.request;
+    const { data } = request;
     const todo = await prisma.todo.create({ data });
-    context.response = { t: 'todosCreateSuccess', data: todo };
-    return send(context);
+    const response: TodosCreateResponse = {
+      t: 'todosCreateSuccess',
+      data: todo,
+    };
+    sendToContext(context, response);
+    broadcastToAll({ t: 'todos/created', data: todo });
   } catch (error) {
     console.log('todosCreate', error);
-    context.response = { t: 'todosCreateFail' };
-    return send(context);
+    const response: TodosCreateResponse = { t: 'todosCreateFail' };
+    return sendToContext(context, response);
   }
 }
+
+export { todosCreate };

@@ -1,40 +1,38 @@
 import { WebSocketServer } from 'ws';
 import { getEnv } from './config';
-import { routesAuth } from './routes/auth';
 import type { Context } from './helpers';
-import { allClients, authenticatedClients, broadcastToAll } from './helpers';
-import { routesTodos } from './routes/todos';
+import { allClients, authenticatedClients, setUserOnline } from './helpers';
 import { init } from '@paralleldrive/cuid2';
 import { prisma } from './prisma';
+import { router } from './routes';
 
 const cuid = init({ length: 5 });
 
 function startWSServer() {
   const port = +getEnv('PORT');
   const server = new WebSocketServer({ port });
+  let logInterval = 0;
 
   server.on('listening', () => {
     console.log(`WebSocketServer listening on port ${port}`);
 
-    let todoIndex = 0;
-    setInterval(async () => {
-      console.log('allClients', allClients.size);
-      console.log('authenticatedClients', authenticatedClients.size);
-      const todo = await prisma.todo.create({
-        data: {
-          title: `Todo ${++todoIndex}`,
-        },
+    logInterval = setInterval(async () => {
+      console.log(`clients`, {
+        all: allClients.size,
+        authenticated: authenticatedClients.size,
       });
-      broadcastToAll({ t: 'todos/created', data: todo });
     }, 10000);
+  });
+
+  server.on('close', () => {
+    console.log(`WebSocketServer closed`);
+    clearInterval(logInterval);
   });
 
   server.on('connection', socket => {
     const context: Context = {
       id: cuid(),
       socket,
-      request: { t: '' }, // TODO: move to outer object to avoid race conditions
-      response: null, // TODO: move to outer object to avoid race conditions
       userId: '',
       sessionId: '',
     };
@@ -42,10 +40,15 @@ function startWSServer() {
 
     socket.on('error', console.error);
 
-    socket.on('close', () => {
+    socket.on('close', async () => {
       allClients.delete(context.id);
       if (context.userId) {
-        authenticatedClients.delete(context.userId);
+        const user = await prisma.user.findUnique({
+          where: { id: context.userId },
+        });
+        if (user) {
+          void setUserOnline(context, user, false);
+        }
       }
     });
 
@@ -59,10 +62,7 @@ function startWSServer() {
         socket.send(JSON.stringify({ m: 'v/json' }));
         return;
       }
-      context.request = json;
-      context.response = null;
-      void routesAuth(context);
-      void routesTodos(context);
+      router(context, json);
     });
   });
 

@@ -12,7 +12,6 @@ const config = {
     alias: {
       '@components': './src/lib/client/components',
       '@stores': './src/lib/client/stores',
-      '@services': './src/lib/client/services',
       '@types': './src/lib/types',
     },
   },

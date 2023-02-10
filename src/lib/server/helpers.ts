@@ -1,20 +1,27 @@
 import type WebSocket from 'ws';
+import type { User } from '@prisma/client';
+import { prisma } from './prisma';
 
 export interface BaseRequest {
   t: string;
 }
 
-export interface Context<Req = BaseRequest, Res = unknown> {
+export interface Context {
   id: string;
   socket: WebSocket;
-  request: Req;
-  response: Res;
   userId: string;
   sessionId: string;
 }
 
-export function send(context: Context) {
-  context.socket.send(JSON.stringify(context.response));
+export function sendToContext(context: Context, message: unknown): void {
+  sendToSocket(context.socket, message);
+}
+
+export function sendToSocket(
+  socket: WebSocket.WebSocket,
+  message: unknown,
+): void {
+  socket.send(JSON.stringify(message));
 }
 
 /**
@@ -35,6 +42,22 @@ export const authenticatedClients = new Map<string, Context>();
  */
 export const rooms: Record<string, Map<string, Context>> = {};
 
+export async function setUserOnline(
+  context: Context,
+  user: User,
+  isOnline = true,
+) {
+  if (isOnline) {
+    authenticatedClients.set(context.userId, context);
+  } else {
+    authenticatedClients.delete(context.userId);
+  }
+  broadcastToAll({
+    t: isOnline ? 'users/online' : 'users/offline',
+    data: user,
+  });
+}
+
 /**
  * Sends a message to all clients in the room
  * @param roomName
@@ -42,11 +65,7 @@ export const rooms: Record<string, Map<string, Context>> = {};
  */
 export function broadcastToRoom(roomName: string, message: unknown) {
   const room = rooms[roomName];
-  if (room) {
-    room.forEach(context => {
-      context.socket.send(JSON.stringify(message));
-    });
-  }
+  room && room.forEach(context => sendToContext(context, message));
 }
 
 /**
@@ -54,7 +73,16 @@ export function broadcastToRoom(roomName: string, message: unknown) {
  * @param message
  */
 export function broadcastToAll(message: unknown) {
-  allClients.forEach(context => {
-    context.socket.send(JSON.stringify(message));
-  });
+  allClients.forEach(context => sendToContext(context, message));
+}
+
+export function authMiddleware(
+  context: Context,
+  fn: (context: Context) => void,
+): void {
+  if (!context.userId) {
+    sendToContext(context, { t: 'auth/401' });
+    return;
+  }
+  fn(context);
 }
