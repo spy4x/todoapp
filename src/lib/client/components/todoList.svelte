@@ -25,7 +25,7 @@
     {#if editable}
       <TodoCreate />
     {:else}
-      <a href="/auth" class="btn w-48">Sign up to create or modify a todo</a>
+      <a href="/sign-up" class="btn w-48">Sign up to create or modify a todo</a>
     {/if}
   </div>
 </div>
