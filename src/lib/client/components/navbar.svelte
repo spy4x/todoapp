@@ -10,7 +10,7 @@
     {#if $auth.user}
       <div class="dropdown-end dropdown">
         <label tabindex="0" class="btn-ghost btn-circle avatar btn">
-          <div class="w-10 rounded-full">
+          <div class="w-10 rounded-full border border-neutral">
             <img
               src={$auth.user.photoURL || '/img/user.svg'}
               alt="User avatar"
