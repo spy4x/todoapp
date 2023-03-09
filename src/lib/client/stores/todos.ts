@@ -44,6 +44,9 @@ export const todos = {
   create: (title: string) => {
     send(socket, { t: 'todos/create', data: { title } });
   },
+  update: (id: number, title: string) => {
+    send(socket, { t: 'todos/create', data: { id, title } });
+  },
   delete: (id: number) => {
     send(socket, { t: 'todos/delete', data: { id } });
   },
