@@ -13,28 +13,19 @@
         <label class="label cursor-pointer">
           <input
             type="checkbox"
-            checked={todo.completed}
+            bind:checked={todo.completed}
             class="checkbox checkbox-md"
+            on:change={() => todos.update(todo)}
           />
         </label>
         <input
           type="text"
           placeholder="Title"
           class="input-bordered input ml-2 grow"
-          value={todo.title}
+          bind:value={todo.title}
+          on:blur={() => todos.update(todo)}
         />
         <div class="flex ">
-            <button
-                on:click={todos.update(todo.id, todo.title)}
-                class="btn-square btn text-white"
-            >
-              <img
-                      src='/img/pen.png'
-                      alt="User avatar"
-                      class="h-4 w-4"
-              />
-            </button>
-
           <button on:click={todos.delete(todo.id)} class="btn-square btn text-white">
             <svg
                     class="h-4 w-4"
