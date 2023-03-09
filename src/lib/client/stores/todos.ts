@@ -27,6 +27,18 @@ socket.addEventListener('message', event => {
         };
       });
     }
+    case 'todos/updated': {
+        return store.update(state => {
+            return {
+                data: state.data.map(todo => {
+                if (todo.id === data.data.id) {
+                    return data.data;
+                }
+                return todo;
+                }),
+            };
+        })
+    }
     case 'todos/deleted': {
       return store.update(state => {
         return {
@@ -43,6 +55,9 @@ export const todos = {
   subscribe: store.subscribe,
   create: (title: string) => {
     send(socket, { t: 'todos/create', data: { title } });
+  },
+  update: (todo: Todo) => {
+    send(socket, { t: 'todos/update', data: todo });
   },
   delete: (id: number) => {
     send(socket, { t: 'todos/delete', data: { id } });
