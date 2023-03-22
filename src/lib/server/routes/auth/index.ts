@@ -3,12 +3,18 @@ import { signUp, signUpCommand, type SignUpRequest } from './signUp';
 import { signIn, signInCommand, type SignInRequest } from './signIn';
 import { reSignIn, reSignInCommand, type ReSignInRequest } from './reSignIn';
 import { signOut, signOutCommand, type SignOutRequest } from './signOut';
+import {
+  deleteUser,
+  deleteUserCommand,
+  type DeleteUserRequest,
+} from './deleteUser';
 
 export type AuthRequest =
   | SignUpRequest
   | SignInRequest
   | ReSignInRequest
-  | SignOutRequest;
+  | SignOutRequest
+  | DeleteUserRequest;
 
 export async function routesAuth(
   context: Context,
@@ -23,5 +29,7 @@ export async function routesAuth(
       return reSignIn(context, request);
     case signOutCommand:
       return signOut(context);
+    case deleteUserCommand:
+      return deleteUser(context, request);
   }
 }

@@ -68,6 +68,9 @@ export const auth = {
   signOut: () => {
     send(socket, { t: 'auth/signOut' });
   },
+  deleteUser: (id: string) => {
+    send(socket, { t: 'auth/deleteUser', data: { id } });
+  },
 };
 
 // read store values from localStorage
