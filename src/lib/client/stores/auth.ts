@@ -41,9 +41,7 @@ socket.addEventListener('message', event => {
     case 'auth/signOutSuccess': {
       return setState(initialState);
     }
-    case 'auth/deleteUserSuccess': {
-      return setState(initialState);
-    }
+    case 'auth/deleteUserSuccess':
     case 'auth/signInFail':
     case 'auth/reSignInFail':
     case 'auth/signUpFail':
