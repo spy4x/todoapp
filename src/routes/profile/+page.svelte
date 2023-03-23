@@ -41,6 +41,9 @@
           aria-hidden="true"
           class="btn">Yes, I'm sure!</label
         >
+        <label for="my-modal" aria-hidden="true" class="btn-primary btn"
+          >No, take me back!</label
+        >
       </div>
     </div>
   </div>
