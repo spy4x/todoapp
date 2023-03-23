@@ -12,17 +12,13 @@ export interface DeleteUserRequest extends BaseRequest {
 }
 
 export type DeleteUserResponse =
-  | { t: 'auth/deleteUserSuccess'; data: User }
+  | { t: 'auth/deleteUserSuccess' }
   | { t: 'auth/deleteUserFail' };
 
-export async function deleteUser(
-  context: Context,
-  request: DeleteUserRequest,
-): Promise<void> {
+export async function deleteUser(context: Context): Promise<void> {
   try {
     await auth.invalidateSession(context.sessionId);
-    const { data } = request;
-    const user = await prisma.user.delete({ where: { id: data.id } });
+    const user = await prisma.user.delete({ where: { id: context.userId } });
     if (!user) {
       throw new Error('User not found');
     }
@@ -31,7 +27,6 @@ export async function deleteUser(
     context.sessionId = '';
     const response: DeleteUserResponse = {
       t: 'auth/deleteUserSuccess',
-      data: user,
     };
     sendToContext(context, response);
   } catch (error) {
