@@ -2,7 +2,6 @@ import { auth } from '../../lucia';
 import type { BaseRequest, Context } from '../../helpers';
 import { setUserOnline, sendToContext } from '../../helpers';
 import { prisma } from '../../prisma';
-import type { User } from '@prisma/client';
 
 export const deleteUserCommand = 'auth/deleteUser';
 
