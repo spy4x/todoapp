@@ -16,6 +16,7 @@ function startWSServer() {
   server.on('listening', () => {
     console.log(`WebSocketServer listening on port ${port}`);
 
+    // @ts-ignore
     logInterval = setInterval(async () => {
       console.log(`clients`, {
         all: allClients.size,

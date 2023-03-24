@@ -41,6 +41,7 @@ socket.addEventListener('message', event => {
     case 'auth/signOutSuccess': {
       return setState(initialState);
     }
+    case 'auth/deleteUserSuccess':
     case 'auth/signInFail':
     case 'auth/reSignInFail':
     case 'auth/signUpFail':
@@ -67,6 +68,9 @@ export const auth = {
   },
   signOut: () => {
     send(socket, { t: 'auth/signOut' });
+  },
+  deleteUser: (id: string) => {
+    send(socket, { t: 'auth/deleteUser', data: { id } });
   },
 };
 
